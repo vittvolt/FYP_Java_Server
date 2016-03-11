@@ -7,23 +7,83 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 import javax.imageio.ImageIO;
+import javax.swing.ImageIcon;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
+
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfByte;
+import org.opencv.imgcodecs.Imgcodecs;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
+import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 
+import java.awt.image.DataBufferByte;
 
-public class Main extends JPanel{
+
+public class Main{
+	
+	static int w = 0;
+
+	static int h = 0;
 	
 	static ByteArrayOutputStream bos = null;
+	
+	public static JFrame frame = new JFrame();
+	
+	public static void show_Img(Image img){
+		ImageIcon icon = new ImageIcon(img);
+		JLabel lbl = new JLabel();
+		lbl.setIcon(icon);
+  	  	frame.setSize(img.getWidth(null) + 50, img.getHeight(null) + 50);
+  	  	frame.add(lbl);
+	}
+	
+	public static Image Mat_to_BufferedImage(Mat m){
+		
+		int type = BufferedImage.TYPE_BYTE_GRAY;
+        if ( m.channels() > 1 ) {
+            type = BufferedImage.TYPE_3BYTE_BGR;
+        }
+        int bufferSize = m.channels()*m.cols()*m.rows();
+        byte [] b = new byte[bufferSize];
+        m.get(0,0,b); // get all the pixels
+        BufferedImage image = new BufferedImage(m.cols(),m.rows(), type);
+        final byte[] targetPixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
+        System.arraycopy(b, 0, targetPixels, 0, b.length);  
+		
+		return image;
+	}
+	
+	public static Mat byteArray_to_Mat(byte [] bytes){
+		Mat m = Imgcodecs.imdecode(new MatOfByte(bytes), Imgcodecs.CV_LOAD_IMAGE_UNCHANGED);
+		//Mat m = new Mat(w, h, CvType.CV_8UC3);
+		//m.put(0, 0, bytes);
+		return m;
+	}
+	
+	public static Image byteArray_to_Image(byte [] bytes){
+		BufferedImage img = null;
+		try{
+			img = ImageIO.read(new ByteArrayInputStream(bytes));
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+		return img;
+	}
  
-	public void paint(Graphics g) {
+	//For use in JPanel, need the main class to exten JPanel
+	/*public void paint(Graphics g) {
 	      Image img = createImg();
 	      g.drawImage(img, 20,20,this);
 	   }
@@ -40,14 +100,19 @@ public class Main extends JPanel{
 		
 		
 		return BImg;
-	}
+	} */
 	
 	 public static void main(String[] args){
+	  System.loadLibrary(Core.NATIVE_LIBRARY_NAME);	 
+		 
+	  frame.setVisible(true);
+	  frame.setLayout(new FlowLayout());
+	  frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);	 
+		 
 	  ServerSocket serverSocket = null;
 	  Socket socket = null;
 	  DataInputStream dataInputStream = null;
 	  DataOutputStream dataOutputStream = null;
-	  int count = 0;
 	  
 	  try {
 	   serverSocket = new ServerSocket(8080);
@@ -72,15 +137,23 @@ public class Main extends JPanel{
 	    	bos.write(i);
 	    
 	    bos.flush();
-	    //bos.close();
 	    
 	    //Show the image
-	    JFrame frame = new JFrame();
+	    byte[] b = bos.toByteArray();
+	    
+	    Mat mat_img = byteArray_to_Mat(b);
+	    
+	    Image img = Mat_to_BufferedImage(mat_img);
+	    
+	    show_Img(img);
+	    
+	    
+	    /*JFrame frame = new JFrame();
 	    frame.getContentPane().add(new Main());
 	
 	    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	    frame.setSize(500,500);
-	    frame.setVisible(true);
+	    frame.setVisible(true); */
 	    
 	    /*dataInputStream = new DataInputStream(socket.getInputStream());
 	    System.out.println("ip: " + socket.getInetAddress());
@@ -120,6 +193,14 @@ public class Main extends JPanel{
 	      // TODO Auto-generated catch block
 	      e.printStackTrace();
 	     }
+	    }
+	    if (bos != null){
+	    	try{
+	    		bos.close();
+	    	}
+	    	catch (Exception e){
+	    		e.printStackTrace();
+	    	}
 	    }
 	    if (socket != null){
 	    	try{
