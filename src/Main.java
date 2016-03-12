@@ -17,6 +17,7 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
 import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.utils.*;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
@@ -39,13 +40,14 @@ public class Main{
 	static ByteArrayOutputStream bos = null;
 	
 	public static JFrame frame = new JFrame();
+	public static JLabel lbl = new JLabel();
 	
 	public static void show_Img(Image img){
 		ImageIcon icon = new ImageIcon(img);
-		JLabel lbl = new JLabel();
 		lbl.setIcon(icon);
   	  	frame.setSize(img.getWidth(null) + 50, img.getHeight(null) + 50);
   	  	frame.add(lbl);
+  	  	frame.repaint();
 	}
 	
 	public static Image Mat_to_BufferedImage(Mat m){
@@ -140,10 +142,13 @@ public class Main{
 	    
 	    //Show the image
 	    byte[] b = bos.toByteArray();
+	    System.out.println("Frame received!! " + String.valueOf(b.length));
 	    
-	    Mat mat_img = byteArray_to_Mat(b);
+	    BufferedImage img = ImageIO.read(new ByteArrayInputStream(b));
 	    
-	    Image img = Mat_to_BufferedImage(mat_img);
+	    //Mat mat_img = byteArray_to_Mat(b);
+	    
+	    //Image img = Mat_to_BufferedImage(mat_img);
 	    
 	    show_Img(img);
 	    
