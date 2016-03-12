@@ -143,15 +143,18 @@ public class Main{
 	    
 	    //Show the image
 	    byte[] b = bos.toByteArray();
+	    //Mat mat_img = byteArray_to_Mat(b);  //For processing images from saved files on Android
+	    //Image img = Mat_to_BufferedImage(mat_img);
 	    System.out.println("Frame received!! " + String.valueOf(b.length));
 	    
 	    BufferedImage img = ImageIO.read(new ByteArrayInputStream(b));
+	    byte[] pixels = ((DataBufferByte) img.getRaster().getDataBuffer()).getData();
+	    Mat mat_img = new Mat(img.getHeight(), img.getWidth(), CvType.CV_8UC3); //Height/width reversed
+	    mat_img.put(0, 0, pixels);
 	    
-	    //Mat mat_img = byteArray_to_Mat(b);
+	    Image img2 = Mat_to_BufferedImage(mat_img);
 	    
-	    //Image img = Mat_to_BufferedImage(mat_img);
-	    
-	    show_Img(img);
+	    show_Img(img2);
 	    
 	    
 	    /*JFrame frame = new JFrame();
