@@ -47,6 +47,7 @@ public class Main{
 		lbl.setIcon(icon);
   	  	frame.setSize(img.getWidth(null) + 50, img.getHeight(null) + 50);
   	  	frame.add(lbl);
+  	  	frame.revalidate();
   	  	frame.repaint();
 	}
 	
