@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.List;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -16,14 +17,20 @@ import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
+import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
 import org.opencv.utils.*;
+import org.opencv.core.MatOfPoint;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Image;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -31,11 +38,19 @@ import java.io.ByteArrayOutputStream;
 import java.awt.image.DataBufferByte;
 
 
-public class Main{
-	
-	static int w = 0;
-
-	static int h = 0;
+public class Main {
+		
+	//Color blob detection variables
+	private static Mat mFrame;
+    private static boolean              mIsColorSelected = false;
+    private static Scalar mBlobColorRgba;
+    private static Scalar               mBlobColorHsv;
+    private static ColorBlobDetector    mDetector;
+    private static Mat                  mSpectrum;
+    private static Size SPECTRUM_SIZE;
+    private static Scalar               CONTOUR_COLOR;
+    static int rows = 0;
+	static int cols = 0;
 	
 	static int command1 = 11, command2 = 22, parameter1 = 1, parameter2 = 2;
 	
@@ -47,7 +62,7 @@ public class Main{
 	public static void show_Img(Image img){
 		ImageIcon icon = new ImageIcon(img);
 		lbl.setIcon(icon);
-  	  	frame.setSize(img.getWidth(null) + 5, img.getHeight(null) + 5);
+  	  	frame.setSize(img.getWidth(null) + 100, img.getHeight(null) + 100);
   	  	frame.add(lbl);
   	  	frame.revalidate();
   	  	frame.repaint();
@@ -110,10 +125,59 @@ public class Main{
 	
 	 public static void main(String[] args){
 	  System.loadLibrary(Core.NATIVE_LIBRARY_NAME);	 
-		 
+	  
+	  //Initialization
+	  mFrame = new Mat();
+	  mSpectrum = new Mat();
+	  mDetector = new ColorBlobDetector();
+	  mBlobColorHsv = new Scalar(255);
+	  mBlobColorRgba = new Scalar(255);
+	  SPECTRUM_SIZE = new Size(200, 64);
+	  CONTOUR_COLOR = new Scalar(255,0,0,255);
+	  
+	  MouseAdapter MA = new MouseAdapter() {
+		  @Override 
+		    public void mousePressed(MouseEvent e) {
+			  mIsColorSelected = false;
+			  
+			  int x = e.getX() - 50;
+			  int y = e.getY() - 41;
+			  System.out.println("Clicked!!!!!" + " " + x + " " + y);
+			  if ((x < 0) || (y < 0) || (x > cols) || (y > rows)) return;
+
+		        org.opencv.core.Rect touchedRect = new org.opencv.core.Rect();
+
+		        touchedRect.x = (x>4) ? x-4 : 0;
+		        touchedRect.y = (y>4) ? y-4 : 0;
+
+		        touchedRect.width = (x+4 < cols) ? x + 4 - touchedRect.x : cols - touchedRect.x;
+		        touchedRect.height = (y+4 < rows) ? y + 4 - touchedRect.y : rows - touchedRect.y;
+
+		        Mat touchedRegionRgba = mFrame.submat(touchedRect);
+
+		        Mat touchedRegionHsv = new Mat();
+		        Imgproc.cvtColor(touchedRegionRgba, touchedRegionHsv, Imgproc.COLOR_RGB2HSV_FULL);
+
+		        // Calculate average color of touched region
+		        mBlobColorHsv = Core.sumElems(touchedRegionHsv);
+		        int pointCount = touchedRect.width*touchedRect.height;
+		        for (int i = 0; i < mBlobColorHsv.val.length; i++)
+		            mBlobColorHsv.val[i] /= pointCount;
+
+		        mBlobColorRgba = converScalarHsv2Rgba(mBlobColorHsv);
+		        mDetector.resetStart();
+		        mDetector.setHsvColor(mBlobColorHsv);
+
+		        Imgproc.resize(mDetector.getSpectrum(), mSpectrum, SPECTRUM_SIZE);
+
+		        mIsColorSelected = true;
+		    } 
+	  };
+	  
 	  frame.setVisible(true);
 	  frame.setLayout(new FlowLayout());
 	  frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);	 
+	  frame.addMouseListener(MA);
 		 
 	  ServerSocket serverSocket = null;
 	  Socket socket = null;
@@ -156,7 +220,7 @@ public class Main{
 	    }
 	    bos.flush();
 	    
-	    //Show the image
+	    //Process and show the image
 	    byte[] b = bos.toByteArray();
 	    //Mat mat_img = byteArray_to_Mat(b);  //For processing images from saved files on Android
 	    System.out.println("Frame received!! " + String.valueOf(b.length));
@@ -167,8 +231,28 @@ public class Main{
 	    mat_img.put(0, 0, pixels);
 	    
 	    mat_img.convertTo(mat_img, -1, 2, 0);
-	    Image img2 = Mat_to_BufferedImage(mat_img);
 	    
+	    //Image processing
+	    mat_img.copyTo(mFrame);
+	    rows = mFrame.rows();
+	    cols = mFrame.cols();
+	    if (mIsColorSelected) {
+            //Show the error-corrected color
+            mBlobColorHsv = mDetector.get_new_hsvColor();
+            mBlobColorRgba = converScalarHsv2Rgba(mBlobColorHsv);
+
+            mDetector.process(mFrame);
+            List<MatOfPoint> contours = mDetector.getContours();
+            Imgproc.drawContours(mFrame, contours, -1, CONTOUR_COLOR,2);
+
+            Mat colorLabel = mFrame.submat(4, 68, 4, 68);
+            colorLabel.setTo(mBlobColorRgba);
+
+            Mat spectrumLabel = mFrame.submat(4, 4 + mSpectrum.rows(), 70, 70 + mSpectrum.cols());
+            mSpectrum.copyTo(spectrumLabel);
+        }
+	    
+	    Image img2 = Mat_to_BufferedImage(mFrame);
 	    show_Img(img2);
 	    
 	    //Send command to client
@@ -242,5 +326,13 @@ public class Main{
 	    }
 	   }
 	  }
+	 }
+
+	 private static Scalar converScalarHsv2Rgba(Scalar hsvColor) {
+	     Mat pointMatRgba = new Mat();
+	     Mat pointMatHsv = new Mat(1, 1, CvType.CV_8UC3, hsvColor);
+	     Imgproc.cvtColor(pointMatHsv, pointMatRgba, Imgproc.COLOR_HSV2RGB_FULL, 4);
+
+	     return new Scalar(pointMatRgba.get(0, 0));
 	 }
 }
