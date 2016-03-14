@@ -170,6 +170,11 @@ public class Main{
 	    Image img2 = Mat_to_BufferedImage(mat_img);
 	    
 	    show_Img(img2);
+	    
+	    //Send command to client
+	    dataOutputStream = new DataOutputStream(socket.getOutputStream());
+	    dataOutputStream.writeInt(command1);
+	    dataOutputStream.writeInt(command2);
 	   
 	    
 	    /*JFrame frame = new JFrame();
