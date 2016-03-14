@@ -37,6 +37,8 @@ public class Main{
 
 	static int h = 0;
 	
+	static int command1 = 11, command2 = 22, parameter1 = 1, parameter2 = 2;
+	
 	static ByteArrayOutputStream bos = null;
 	
 	public static JFrame frame = new JFrame();
@@ -45,7 +47,7 @@ public class Main{
 	public static void show_Img(Image img){
 		ImageIcon icon = new ImageIcon(img);
 		lbl.setIcon(icon);
-  	  	frame.setSize(img.getWidth(null) + 50, img.getHeight(null) + 50);
+  	  	frame.setSize(img.getWidth(null) + 5, img.getHeight(null) + 5);
   	  	frame.add(lbl);
   	  	frame.revalidate();
   	  	frame.repaint();
@@ -67,6 +69,7 @@ public class Main{
 		return image;
 	}
 	
+	//The bytes must be from image files (not Android bitmap object)
 	public static Mat byteArray_to_Mat(byte [] bytes){
 		Mat m = Imgcodecs.imdecode(new MatOfByte(bytes), Imgcodecs.CV_LOAD_IMAGE_UNCHANGED);
 		//Mat m = new Mat(w, h, CvType.CV_8UC3);
@@ -85,7 +88,7 @@ public class Main{
 		return img;
 	}
  
-	//For use in JPanel, need the main class to exten JPanel
+	//For use in JPanel, need the main class to extend JPanel
 	/*public void paint(Graphics g) {
 	      Image img = createImg();
 	      g.drawImage(img, 20,20,this);
@@ -134,17 +137,28 @@ public class Main{
 	    
 	    dataInputStream = new DataInputStream(socket.getInputStream());
 	    //BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream("E:/socket/ball.jpg"));
+	    
+	    //Read image frame size first
+	    long size = dataInputStream.readLong();
+	    System.out.println("Size: " + String.valueOf(size));
+	    //Read parameters from client
+	    parameter1 = dataInputStream.readInt();
+	    parameter2 = dataInputStream.readInt();
+	    System.out.println("par1 & par2: " + String.valueOf(parameter1) + " " + String.valueOf(parameter2));
+	    
+	    //Read image bytes
 	    bos = new ByteArrayOutputStream(); 
-	    
-	    while ((i = dataInputStream.read()) > -1)
-	    	bos.write(i);
-	    
+	    int bytes_read = 0;
+	    byte[] buffer = new byte[1024];
+	    while (size > 0 && (bytes_read = dataInputStream.read(buffer, 0, (int)Math.min(buffer.length, size))) != -1){
+	    	bos.write(buffer, 0, bytes_read);
+	    	size = size - bytes_read;
+	    }
 	    bos.flush();
 	    
 	    //Show the image
 	    byte[] b = bos.toByteArray();
 	    //Mat mat_img = byteArray_to_Mat(b);  //For processing images from saved files on Android
-	    //Image img = Mat_to_BufferedImage(mat_img);
 	    System.out.println("Frame received!! " + String.valueOf(b.length));
 	    
 	    BufferedImage img = ImageIO.read(new ByteArrayInputStream(b));
@@ -152,10 +166,11 @@ public class Main{
 	    Mat mat_img = new Mat(img.getHeight(), img.getWidth(), CvType.CV_8UC3); //Height/width reversed
 	    mat_img.put(0, 0, pixels);
 	    
+	    mat_img.convertTo(mat_img, -1, 2, 0);
 	    Image img2 = Mat_to_BufferedImage(mat_img);
 	    
 	    show_Img(img2);
-	    
+	   
 	    
 	    /*JFrame frame = new JFrame();
 	    frame.getContentPane().add(new Main());
