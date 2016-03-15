@@ -102,26 +102,6 @@ public class Main {
 		}
 		return img;
 	}
- 
-	//For use in JPanel, need the main class to extend JPanel
-	/*public void paint(Graphics g) {
-	      Image img = createImg();
-	      g.drawImage(img, 20,20,this);
-	   }
-	
-	private Image createImg(){
-		BufferedImage BImg = null;
-		try{
-			//BImg = ImageIO.read(new File("E:/socket/ball.jpg"));
-			BImg = ImageIO.read(new ByteArrayInputStream(bos.toByteArray()));
-		}
-		catch(Exception e){
-			e.printStackTrace();
-		}
-		
-		
-		return BImg;
-	} */
 	
 	 public static void main(String[] args){
 	  System.loadLibrary(Core.NATIVE_LIBRARY_NAME);	 
@@ -227,29 +207,24 @@ public class Main {
 	    
 	    BufferedImage img = ImageIO.read(new ByteArrayInputStream(b));
 	    byte[] pixels = ((DataBufferByte) img.getRaster().getDataBuffer()).getData();
-	    Mat mat_img = new Mat(img.getHeight(), img.getWidth(), CvType.CV_8UC3); //Height/width reversed
-	    mat_img.put(0, 0, pixels);
-	    
-	    mat_img.convertTo(mat_img, -1, 2, 0);
+	    //Optimization
+	    Mat mat_img;
+	    if (cols == 0 || rows == 0){
+	    	mat_img = new Mat(img.getHeight(), img.getWidth(), CvType.CV_8UC3); //Height/width reversed
+		    mat_img.put(0, 0, pixels);
+		    mat_img.convertTo(mat_img, -1, 2, 0);
+		    mat_img.copyTo(mFrame);
+		    rows = mFrame.rows();
+		    cols = mFrame.cols();
+	    }
+	    else{
+	    	mFrame.put(0, 0, pixels);
+	    	mFrame.convertTo(mFrame, -1, 2, 0);
+	    }
 	    
 	    //Image processing
-	    mat_img.copyTo(mFrame);
-	    rows = mFrame.rows();
-	    cols = mFrame.cols();
 	    if (mIsColorSelected) {
-            //Show the error-corrected color
-            mBlobColorHsv = mDetector.get_new_hsvColor();
-            mBlobColorRgba = converScalarHsv2Rgba(mBlobColorHsv);
-
-            mDetector.process(mFrame);
-            List<MatOfPoint> contours = mDetector.getContours();
-            Imgproc.drawContours(mFrame, contours, -1, CONTOUR_COLOR,2);
-
-            Mat colorLabel = mFrame.submat(4, 68, 4, 68);
-            colorLabel.setTo(mBlobColorRgba);
-
-            Mat spectrumLabel = mFrame.submat(4, 4 + mSpectrum.rows(), 70, 70 + mSpectrum.cols());
-            mSpectrum.copyTo(spectrumLabel);
+            color_blob_detection(mFrame);
         }
 	    
 	    Image img2 = Mat_to_BufferedImage(mFrame);
@@ -259,23 +234,7 @@ public class Main {
 	    dataOutputStream = new DataOutputStream(socket.getOutputStream());
 	    dataOutputStream.writeInt(command1);
 	    dataOutputStream.writeInt(command2);
-	   
 	    
-	    /*JFrame frame = new JFrame();
-	    frame.getContentPane().add(new Main());
-	
-	    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-	    frame.setSize(500,500);
-	    frame.setVisible(true); */
-	    
-	    /*dataInputStream = new DataInputStream(socket.getInputStream());
-	    System.out.println("ip: " + socket.getInetAddress());
-	    System.out.println("message: " + dataInputStream.readUTF());    
-	        
-	    dataOutputStream = new DataOutputStream(socket.getOutputStream());
-	    count++;
-	    dataOutputStream.writeUTF("Hello Client !!!!!!" + String.valueOf(count));
-	    dataOutputStream.flush();  */
 	   } catch (IOException e) {
 	    // TODO Auto-generated catch block
 	    e.printStackTrace();
@@ -315,17 +274,23 @@ public class Main {
 	    		e.printStackTrace();
 	    	}
 	    }
-	    if (socket != null){
-	    	try{
-	    		socket.close();
-	    		socket = null;
-	    	}
-	    	catch(Exception e){
-	    		e.printStackTrace();
-	    	}
-	    }
 	   }
 	  }
+	 }
+	 
+	 public static void color_blob_detection(Mat m){
+		 mBlobColorHsv = mDetector.get_new_hsvColor();
+         mBlobColorRgba = converScalarHsv2Rgba(mBlobColorHsv);
+
+         mDetector.process(m);
+         List<MatOfPoint> contours = mDetector.getContours();
+         Imgproc.drawContours(m, contours, -1, CONTOUR_COLOR,2);
+
+         Mat colorLabel = m.submat(4, 68, 4, 68);
+         colorLabel.setTo(mBlobColorRgba);
+
+         Mat spectrumLabel = m.submat(4, 4 + mSpectrum.rows(), 70, 70 + mSpectrum.cols());
+         mSpectrum.copyTo(spectrumLabel);
 	 }
 
 	 private static Scalar converScalarHsv2Rgba(Scalar hsvColor) {
