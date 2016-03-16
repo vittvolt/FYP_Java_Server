@@ -1,0 +1,5 @@
+
+public enum DetectionMode {
+	COLOR_BLOB_TRACKING, 
+	COLOR_BASED_PARTICLE_FILTER_TRACKING
+}
