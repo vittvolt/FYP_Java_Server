@@ -12,6 +12,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
@@ -54,6 +55,7 @@ public class Main {
     private static Scalar               CONTOUR_COLOR;
     static int rows = 0;
 	static int cols = 0;
+	static BufferedImage bimg = null;
 	
 	static int command1 = 11, command2 = 22, parameter1 = 1, parameter2 = 2;
 	
@@ -121,6 +123,16 @@ public class Main {
 		MouseAdapter MA = new MouseAdapter() {
 			@Override 
 			public void mousePressed(MouseEvent e) {
+				// Save the image (for fyp report data)
+				if (SwingUtilities.isRightMouseButton(e)){ 
+					File f = new File("C:/Users/TH WU/Dropbox/FYP Documents/FYP_Final_Report_Latex/pics/color06.jpg");
+					try {
+						ImageIO.write(bimg, "JPG", f);
+					} catch (IOException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+				}
 				if (mMode == DetectionMode.COLOR_BLOB_TRACKING){				  
 					mIsColorSelected = false;
 				  
@@ -156,7 +168,16 @@ public class Main {
 
 					mIsColorSelected = true;
 				}
+				else if (mMode == DetectionMode.COLOR_BASED_PARTICLE_FILTER_TRACKING){
+					
+				}
 			} 
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				if (mMode == DetectionMode.COLOR_BASED_PARTICLE_FILTER_TRACKING){
+					
+				}
+			}
 		};
 	  
 		frame.setVisible(true);
@@ -188,7 +209,7 @@ public class Main {
 				//BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream("E:/socket/ball.jpg"));
 	    
 				//Read image frame size first
-				long size = dataInputStream.readLong();
+				int size = dataInputStream.readInt();
 				System.out.println("Size: " + String.valueOf(size));
 				//Read parameters from client
 				parameter1 = dataInputStream.readInt();
@@ -217,7 +238,7 @@ public class Main {
 				if (cols == 0 || rows == 0){
 					mat_img = new Mat(img.getHeight(), img.getWidth(), CvType.CV_8UC3); //Height/width reversed
 					mat_img.put(0, 0, pixels);
-					mat_img.convertTo(mat_img, -1, 2, 0);
+					mat_img.convertTo(mat_img, -1, 1.2, 0);
 					mat_img.copyTo(mFrame);
 					rows = mFrame.rows();
 					cols = mFrame.cols();
@@ -234,7 +255,8 @@ public class Main {
 	    
 				Image img2 = Mat_to_BufferedImage(mFrame);
 				show_Img(img2);
-	    
+				bimg = (BufferedImage) img2;
+				
 				//Send command to client
 				dataOutputStream = new DataOutputStream(socket.getOutputStream());
 				dataOutputStream.writeInt(command1);
